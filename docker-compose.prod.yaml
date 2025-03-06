@@ -1,0 +1,54 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: ./docker/web/Dockerfile
+      target: prod
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_started
+    volumes:
+      - app-prod:/usr/share/nginx/html
+      - ./docker/web/nginx.dev.conf:/etc/nginx/nginx.conf
+    networks:
+      - app-prod
+    ports:
+      - 80:80
+  app:
+    build:
+      context: .
+      dockerfile: ./docker/app/Dockerfile
+      target: prod
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    depends_on:
+      db:
+        condition: service_started
+    volumes:
+      - app-prod:/usr/share/nginx/html
+    networks:
+      - app-prod
+  db:
+    image: mysql:8.4.4
+    restart: unless-stopped
+    user: root
+    ports:
+      - "${DB_HOST_PORT:-3306}:${DB_PORT:-3306}"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+    volumes:
+      - db-prod:/var/lib/postgresql/data
+    networks:
+      - app-prod
+volumes:
+  app-prod:
+  db-prod:
+networks:
+  app-prod:
